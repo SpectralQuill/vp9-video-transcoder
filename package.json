@@ -1,0 +1,26 @@
+{
+  "name": "vp9-video-transcoder",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "tsx scripts/start.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SpectralQuill/vp9-video-transcoder.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SpectralQuill/vp9-video-transcoder/issues"
+  },
+  "homepage": "https://github.com/SpectralQuill/vp9-video-transcoder#readme",
+  "dependencies": {
+    "@types/node": "^24.10.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
