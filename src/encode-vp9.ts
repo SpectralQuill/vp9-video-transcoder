@@ -1,60 +1,58 @@
-import { exec } from "child_process";
+import { spawn } from "child_process";
 import path from "path";
-import { promisify } from "util";
 
-const execAsync = promisify(exec);
+function runFFmpeg(args: string[]): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const ff = spawn("ffmpeg", args, { stdio: "inherit" });
+        ff.on("error", (err) => reject(err));
+        ff.on("close", (code) => {
+            if (code !== 0) reject(new Error(`FFmpeg exited with code ${code}`));
+            else resolve();
+        });
+    });
+}
 
-/**
- * Encode a video to VP9 (2-pass) at 720p.
- *
- * @param inputPath Absolute path to the source video file
- * @param outputPath Absolute path for encoded MP4 output
- */
 export async function encodeVp9(inputPath: string, outputPath: string): Promise<void> {
     const
         absIn = path.resolve(inputPath),
-        absOut = path.resolve(outputPath)
+        absOut = path.resolve(outputPath),
+        nullDev = (process.platform === "win32" ? "NUL" : "/dev/null")
     ;
     // Pass 1
-    const pass1Cmd = [
-        `ffmpeg`,
-        `-i "${absIn}"`,
-        `-vf "scale=-1:720"`,
-        `-c:v libvpx-vp9`,
-        `-b:v 0`,
-        `-crf 30`,
-        `-cpu-used 1`,
-        `-row-mt 1`,
-        `-tile-columns 1`,
-        `-threads 8`,
-        `-pass 1`,
-        `-an`,
-        `-f mp4`,
-        process.platform === "win32" ? `NUL` : `/dev/null`
-    ].join(" ");
+    const pass1Args = [
+        "-i", absIn,
+        "-vf", "scale=-1:720",
+        "-c:v", "libvpx-vp9",
+        "-b:v", "0",
+        "-crf", "30",
+        "-cpu-used", "1",
+        "-row-mt", "1",
+        "-tile-columns", "1",
+        "-threads", "8",
+        "-pass", "1",
+        "-an",
+        "-f", "mp4",
+        nullDev
+    ];
+    console.log("Running pass 1...");
+    await runFFmpeg(pass1Args);
     // Pass 2
-    const pass2Cmd = [
-        `ffmpeg`,
-        `-i "${absIn}"`,
-        `-vf "scale=-1:720"`,
-        `-c:v libvpx-vp9`,
-        `-b:v 0`,
-        `-crf 30`,
-        `-cpu-used 1`,
-        `-row-mt 1`,
-        `-tile-columns 1`,
-        `-threads 8`,
-        `-pass 2`,
-        `-c:a aac`,
-        `-b:a 128k`,
-        `"${absOut}"`
-    ].join(" ");
-
-    console.log(`Running pass 1...`);
-    await execAsync(pass1Cmd);
-
-    console.log(`Running pass 2...`);
-    await execAsync(pass2Cmd);
-
+    const pass2Args = [
+        "-i", absIn,
+        "-vf", "scale=-1:720",
+        "-c:v", "libvpx-vp9",
+        "-b:v", "0",
+        "-crf", "30",
+        "-cpu-used", "1",
+        "-row-mt", "1",
+        "-tile-columns", "1",
+        "-threads", "8",
+        "-pass", "2",
+        "-c:a", "aac",
+        "-b:a", "128k",
+        absOut
+    ];
+    console.log("Running pass 2...");
+    await runFFmpeg(pass2Args);
     console.log(`Encoding complete → ${absOut}`);
 }
