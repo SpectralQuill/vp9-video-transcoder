@@ -19,6 +19,8 @@
         "isolatedModules": true,
         "noEmit": true
     },
-    "include": ["scripts"],
+    "include": [
+        "scripts", "src"
+    ],
     "exclude": ["node_modules"]
 }
