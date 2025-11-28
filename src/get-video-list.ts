@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 import * as fs from "fs/promises";
 import * as path from "path";
-import { VIDEO_EXTENSIONS } from "./video-extensions";
+import { Video } from "./video";
 
-async function getVideoList(targetDir: string): Promise<string[]> {
+/**
+ * Retrieves a list of video file paths from the specified directory.
+ * @param folderPath Path to the target directory.
+ * @returns Promise<string[]> Array of video file paths.
+ */
+export async function getVideoList(folderPath: string): Promise<string[]> {
     // Get target directory from command line arguments
-    const absPath = path.resolve(targetDir);
+    const absPath = path.resolve(folderPath);
     let stat;
     try {
         stat = await fs.stat(absPath);
@@ -20,13 +25,8 @@ async function getVideoList(targetDir: string): Promise<string[]> {
     ;
     for (const entry of entries) {
         if (!entry.isFile()) continue;
-        const
-            { name } = entry,
-            ext = path.extname(name).toLowerCase()
-        ;
-        if (VIDEO_EXTENSIONS.has(ext)) videos.push(path.join(absPath, name));
+        const { name } = entry;
+        if (Video.isVideoFile(name)) videos.push(path.join(absPath, name));
     }
     return videos;
 }
-
-export { VIDEO_EXTENSIONS, getVideoList };

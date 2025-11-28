@@ -1,13 +1,13 @@
-import { FileTracker } from "./file-tracker";
 import path from "path";
 import { spawn } from "child_process";
+import { Video } from "./video";
 
 /**
  * Runs FFmpeg with the specified arguments.
  * @param args Array of FFmpeg command-line arguments.
  * @returns Promise<void>
  */
-function runFFmpeg(args: string[]): Promise<void> {
+export function runFFmpeg(args: string[]): Promise<void> {
     return new Promise((resolve, reject) => {
         const ff = spawn("ffmpeg", args, { stdio: "inherit" });
         ff.on("error", (err) => reject(err));
@@ -24,13 +24,13 @@ function runFFmpeg(args: string[]): Promise<void> {
  * Transcodes a video file to VP9 format using a two-pass encoding process.
  * @param inputPath Path to the input video file.
  * @param outputPath Path to the output VP9 transcoded video file.
- * @param tracker Optional FileTracker to track the current output file.
+ * @param tracker Optional Video object to track the current output file.
  * @returns Promise<void>
  */
 export async function transcodeVp9(
     inputPath: string,
     outputPath: string,
-    tracker?: FileTracker
+    tracker?: Video
 ): Promise<void> {
     const
         absIn = path.resolve(inputPath),
@@ -53,7 +53,7 @@ export async function transcodeVp9(
         "-f", "mp4",
         (process.platform === "win32" ? "NUL" : "/dev/null")
     ]);
-    if (tracker) tracker.setFile(absOut);
+    if (tracker) tracker.setFilePath(absOut);
     // Pass 2
     console.log("Running pass 2...");
     await runFFmpeg([
@@ -72,19 +72,19 @@ export async function transcodeVp9(
         absOut
     ]);
     console.log(`Encoding complete → ${absOut}`);
-    if(tracker) tracker.clearFile();
+    if(tracker) tracker.clearFilePath();
 }
 
 /**
- * Transcodes multiple video files to VP9 format in batch.
+ * Transcodes multiple video files to VP9 format in a batch process.
  * @param jobs An object where keys are input file paths and values are output file paths.
  * @returns Promise<void>
  */
 export async function transcodeVp9Batch(jobs: Record<string, string>): Promise<void> {
-    const tracker = new FileTracker();
+    const tracker = new Video(null);
 
     async function handleSignal() {
-        const current = tracker.getFile();
+        const current = tracker.getFilePath();
         await tracker.deleteFile();
         console.log(`Deleted incomplete output: ${current}`);
         process.exit(1);
