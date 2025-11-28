@@ -1,4 +1,4 @@
-const VIDEO_EXTENSIONS = new Set([
+const VIDEO_EXTENSIONS: ReadonlySet<string> = new Set([
     ".mp4",
     ".mkv",
     ".webm",
