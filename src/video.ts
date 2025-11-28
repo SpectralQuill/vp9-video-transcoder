@@ -18,6 +18,34 @@ export const VIDEO_EXTENSIONS: ReadonlySet<string> = new Set([
 export class Video {
 
     /**
+     * Retrieves a list of video file paths from the specified directory.
+     * @param folderPath Path to the target directory.
+     * @returns Promise<string[]> Array of video file paths.
+     */
+    static async getVideoList(folderPath: string): Promise<string[]> {
+        // Get target directory from command line arguments
+        const absPath = path.resolve(folderPath);
+        let stat;
+        try {
+            stat = await fs.promises.stat(absPath);
+        } catch {
+            throw `Error: Path does not exist: ${absPath}`;
+        }
+        if (!stat.isDirectory()) throw `Error: Not a directory: ${absPath}`
+        // Read directory contents
+        const
+            entries = await fs.promises.readdir(absPath, { withFileTypes: true }),
+            videoList: string[] = []
+        ;
+        for (const entry of entries) {
+            if (!entry.isFile()) continue;
+            const { name } = entry;
+            if (Video.isVideoFile(name)) videoList.push(path.join(absPath, name));
+        }
+        return videoList;
+    }
+
+    /**
      * Checks if the given file path has a video file extension.
      * @param filePath Path to the file.
      * @returns boolean
