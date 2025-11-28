@@ -21,13 +21,13 @@ function runFFmpeg(args: string[]): Promise<void> {
 }
 
 /**
- * Encodes a video file to VP9 format using a two-pass encoding process.
+ * Transcodes a video file to VP9 format using a two-pass encoding process.
  * @param inputPath Path to the input video file.
- * @param outputPath Path to the output VP9 encoded video file.
+ * @param outputPath Path to the output VP9 transcoded video file.
  * @param tracker Optional FileTracker to track the current output file.
  * @returns Promise<void>
  */
-export async function encodeVp9(
+export async function transcodeVp9(
     inputPath: string,
     outputPath: string,
     tracker?: FileTracker
@@ -76,11 +76,11 @@ export async function encodeVp9(
 }
 
 /**
- * Encodes multiple video files to VP9 format in batch.
+ * Transcodes multiple video files to VP9 format in batch.
  * @param jobs An object where keys are input file paths and values are output file paths.
  * @returns Promise<void>
  */
-export async function encodeVp9Batch(jobs: Record<string, string>): Promise<void> {
+export async function transcodeVp9Batch(jobs: Record<string, string>): Promise<void> {
     const tracker = new FileTracker();
 
     async function handleSignal() {
@@ -99,7 +99,7 @@ export async function encodeVp9Batch(jobs: Record<string, string>): Promise<void
     for (const inputFile in jobs) {
         const outputFile = jobs[inputFile];
         console.log(`Encoding (${count}/${totalJobs}):\n\tFrom:\t${path.basename(inputFile)}\n\tTo:\t${path.basename(outputFile)}`);
-        await encodeVp9(inputFile, outputFile);
+        await transcodeVp9(inputFile, outputFile);
         count++;
     }
 }
