@@ -21,12 +21,14 @@ export default class FFmpeg {
             done = new Promise<void>((resolve, reject) => {
                 ff.on("error", reject);
                 ff.on("close", code => {
-                    if (code !== 0) reject(new Error(`FFmpeg exited with code ${code}`));
-                    else resolve();
+                    if (code !== 0)
+                        reject(new Error(`FFmpeg exited with code ${code}`));
+                    else
+                        resolve();
                 });
             })
         ;
-        return [ ff, done ];
+        return [ff, done];
     }
 
     /**
@@ -47,7 +49,7 @@ export default class FFmpeg {
         ;
         // Pass 1
         console.log("Running pass 1...");
-        await FFmpeg.run([
+        const [p1_ff, p1_done] = FFmpeg.run([
             "-i", absIn,
             "-vf", "scale=-1:720",
             "-c:v", "libvpx-vp9",
@@ -62,10 +64,13 @@ export default class FFmpeg {
             "-f", "mp4",
             (process.platform === "win32" ? "NUL" : "/dev/null")
         ]);
-        if (tracker) tracker.setFilePath(absOut);
+        if (tracker) tracker.setProcess(p1_ff);
+        await p1_done;
+
         // Pass 2
         console.log("Running pass 2...");
-        await FFmpeg.run([
+        if (tracker) tracker.setFilePath(absOut);
+        const [p2_ff, p2_done] = FFmpeg.run([
             "-i", absIn,
             "-vf", "scale=-1:720",
             "-c:v", "libvpx-vp9",
@@ -80,8 +85,14 @@ export default class FFmpeg {
             "-b:a", "128k",
             absOut
         ]);
+        if (tracker) tracker.setProcess(p2_ff);
+        await p2_done;
+
         console.log(`Encoding complete → ${absOut}`);
-        if(tracker) tracker.clearFilePath();
+        if (tracker) {
+            tracker.clearFilePath();
+            tracker.clearProcess();
+        }
     }
 
     /**
@@ -94,8 +105,12 @@ export default class FFmpeg {
 
         async function handleSignal() {
             const filePath = tracker.getFilePath();
-            await tracker.deleteFile();
-            console.log(`Deleted incomplete output: ${filePath}`);
+            console.log("Stopping FFmpeg...");
+            await tracker.killProcess();
+            if (filePath) {
+                await tracker.deleteFile();
+                console.log(`Deleted incomplete output: ${filePath}`);
+            }
             process.exit(1);
         }
 

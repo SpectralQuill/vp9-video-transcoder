@@ -108,6 +108,18 @@ export default class Video {
     }
 
     /**
+     * Kills the ChildProcess associated with the video, if any.
+     * @returns Promise<void>
+     */
+    public async killProcess(): Promise<void> {
+        if (!this.process) return;
+        return new Promise<void>(resolve => {
+            this.process!.once("close", () => resolve());
+            this.process!.kill("SIGKILL");
+        });
+    }
+
+    /**
      * Sets the ChildProcess associated with the video.
      * @param process ChildProcess to set.
      * @return void
