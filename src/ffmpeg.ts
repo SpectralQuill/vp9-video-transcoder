@@ -1,5 +1,8 @@
+import {
+    ChildProcess,
+    spawn
+} from "child_process";
 import path from "path";
-import { spawn } from "child_process";
 import Video from "./video";
 
 /**
@@ -10,19 +13,20 @@ export default class FFmpeg {
     /**
      * Runs FFmpeg with the specified arguments.
      * @param args Array of FFmpeg command-line arguments.
-     * @returns Promise<void>
+     * @returns [ChildProcess, Promise<void>]
      */
-    private static async run(args: string[]): Promise<void> {
-        return new Promise((resolve, reject) => {
-            const ff = spawn("ffmpeg", args, { stdio: "inherit" });
-            ff.on("error", (err) => reject(err));
-            ff.on("close", (code) => {
-                if (code !== 0)
-                    reject(new Error(`FFmpeg exited with code ${code}`));
-                else
-                    resolve();
-            });
-        });
+    private static run(args: string[]): [ChildProcess, Promise<void>] {
+        const
+            ff = spawn("ffmpeg", args, { stdio: "inherit" }),
+            done = new Promise<void>((resolve, reject) => {
+                ff.on("error", reject);
+                ff.on("close", code => {
+                    if (code !== 0) reject(new Error(`FFmpeg exited with code ${code}`));
+                    else resolve();
+                });
+            })
+        ;
+        return [ ff, done ];
     }
 
     /**
@@ -86,12 +90,12 @@ export default class FFmpeg {
      * @returns Promise<void>
      */
     public static async transcodeVp9Batch(jobs: Record<string, string>): Promise<void> {
-        const tracker = new Video(null);
+        const tracker = new Video();
 
         async function handleSignal() {
-            const current = tracker.getFilePath();
+            const filePath = tracker.getFilePath();
             await tracker.deleteFile();
-            console.log(`Deleted incomplete output: ${current}`);
+            console.log(`Deleted incomplete output: ${filePath}`);
             process.exit(1);
         }
 
@@ -104,7 +108,7 @@ export default class FFmpeg {
         for (const inputFile in jobs) {
             const outputFile = jobs[inputFile];
             console.log(`Encoding (${count}/${totalJobs}):\n\tFrom:\t${path.basename(inputFile)}\n\tTo:\t${path.basename(outputFile)}`);
-            await FFmpeg.transcodeVp9(inputFile, outputFile);
+            await FFmpeg.transcodeVp9(inputFile, outputFile, tracker);
             count++;
         }
     }

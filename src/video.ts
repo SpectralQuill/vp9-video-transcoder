@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import { ChildProcess } from "child_process";
 import path from "path";
 
 /**
@@ -6,6 +7,9 @@ import path from "path";
  */
 export default class Video {
 
+    /**
+     * A set of recognized video file extensions.
+     */
     public static readonly VIDEO_EXTENSIONS: ReadonlySet<string> = new Set([
         ".mp4", ".mkv", ".webm", ".mov", ".avi", ".flv", ".wmv", ".m4v"
     ]);
@@ -52,15 +56,67 @@ export default class Video {
      * Creates a new Video instance.
      * @param filePath Path to the video file, or null if not set.
      */
-    public constructor(public filePath: string | null) {}
+    public constructor(
+        private filePath?: string,
+        private process?: ChildProcess
+    ) {}
+
+    // FilePath methods
 
     /**
      * Clears the file path of the video.
      * @return void
      */
     public clearFilePath(): void {
-        this.filePath = null;
+        this.filePath = undefined;
     }
+
+    /**
+     * Gets the current file path of the video.
+     * @returns string | null
+     */
+    public getFilePath(): string | undefined {
+        return this.filePath;
+    }
+
+    /**
+     * Sets the file path of the video.
+     * @param filePath New file path to set.
+     * @return void
+     */
+    public setFilePath(filePath: string): void {
+        this.filePath = filePath;
+    }
+
+    // Process methods
+
+    /**
+     * Clears the ChildProcess associated with the video.
+     * @return void
+     */
+    public clearProcess(): void {
+        this.process = undefined;
+    }
+
+    /**
+     * Gets the current ChildProcess associated with the video.
+     * @returns ChildProcess | undefined
+     * 
+     */
+    public getProcess(): ChildProcess | undefined {
+        return this.process;
+    }
+
+    /**
+     * Sets the ChildProcess associated with the video.
+     * @param process ChildProcess to set.
+     * @return void
+     */
+    public setProcess(process: ChildProcess): void {
+        this.process = process;
+    }
+
+    // Miscellaneous methods
 
     /**
      * Deletes the video file from the filesystem.
@@ -77,24 +133,7 @@ export default class Video {
      * @returns boolean
      */
     public exists(): boolean {
-        return this.filePath !== null && fs.existsSync(this.filePath);
-    }
-
-    /**
-     * Gets the current file path of the video.
-     * @returns string | null
-     */
-    public getFilePath(): string | null {
-        return this.filePath;
-    }
-
-    /**
-     * Sets the file path of the video.
-     * @param filePath New file path to set.
-     * @return void
-     */
-    public setFilePath(filePath: string): void {
-        this.filePath = filePath;
+        return (this.filePath !== undefined) && fs.existsSync(this.filePath);
     }
 
 }
