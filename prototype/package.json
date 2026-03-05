@@ -1,0 +1,26 @@
+{
+    "name": "prototype",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "dependencies": {
+        "csv-parser": "^3.2.0",
+        "esbuild": "^0.25.12",
+        "get-tsconfig": "^4.13.0",
+        "resolve-pkg-maps": "^1.0.0",
+        "tsx": "^4.20.6",
+        "typescript": "^5.9.3",
+        "undici-types": "^7.16.0"
+    },
+    "devDependencies": {
+        "@types/node": "^24.10.1"
+    },
+    "scripts": {
+        "list-videos": "tsx scripts/list-videos.ts",
+        "test": "tsx dev/test.ts"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "commonjs"
+}

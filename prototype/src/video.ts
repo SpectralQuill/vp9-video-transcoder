@@ -6,12 +6,18 @@ import path from "path";
  * Represents a video file and provides utility methods for video file operations.
  */
 export default class Video {
-
     /**
      * A set of recognized video file extensions.
      */
     public static readonly VIDEO_EXTENSIONS: ReadonlySet<string> = new Set([
-        ".mp4", ".mkv", ".webm", ".mov", ".avi", ".flv", ".wmv", ".m4v"
+        ".mp4",
+        ".mkv",
+        ".webm",
+        ".mov",
+        ".avi",
+        ".flv",
+        ".wmv",
+        ".m4v",
     ]);
 
     /**
@@ -28,16 +34,17 @@ export default class Video {
         } catch {
             throw `Error: Path does not exist: ${absPath}`;
         }
-        if (!stat.isDirectory()) throw `Error: Not a directory: ${absPath}`
+        if (!stat.isDirectory()) throw `Error: Not a directory: ${absPath}`;
         // Read directory contents
-        const
-            entries = await fs.promises.readdir(absPath, { withFileTypes: true }),
-            videoList: string[] = []
-        ;
+        const entries = await fs.promises.readdir(absPath, {
+                withFileTypes: true,
+            }),
+            videoList: string[] = [];
         for (const entry of entries) {
             if (!entry.isFile()) continue;
             const { name } = entry;
-            if (Video.isVideoFile(name)) videoList.push(path.join(absPath, name));
+            if (Video.isVideoFile(name))
+                videoList.push(path.join(absPath, name));
         }
         return videoList;
     }
@@ -58,7 +65,7 @@ export default class Video {
      */
     public constructor(
         private filePath?: string,
-        private process?: ChildProcess
+        private process?: ChildProcess,
     ) {}
 
     // FilePath methods
@@ -101,7 +108,7 @@ export default class Video {
     /**
      * Gets the current ChildProcess associated with the video.
      * @returns ChildProcess | undefined
-     * 
+     *
      */
     public getProcess(): ChildProcess | undefined {
         return this.process;
@@ -113,7 +120,7 @@ export default class Video {
      */
     public async killProcess(): Promise<void> {
         if (!this.process) return;
-        return new Promise<void>(resolve => {
+        return new Promise<void>((resolve) => {
             this.process!.once("close", () => resolve());
             this.process!.kill("SIGKILL");
         });
@@ -136,7 +143,7 @@ export default class Video {
      */
     public async deleteFile(): Promise<void> {
         const { filePath } = this;
-        if(!filePath || !Video.isVideoFile(filePath)) return Promise.resolve();
+        if (!filePath || !Video.isVideoFile(filePath)) return Promise.resolve();
         return fs.promises.unlink(filePath);
     }
 
@@ -145,7 +152,6 @@ export default class Video {
      * @returns boolean
      */
     public exists(): boolean {
-        return (this.filePath !== undefined) && fs.existsSync(this.filePath);
+        return this.filePath !== undefined && fs.existsSync(this.filePath);
     }
-
 }
