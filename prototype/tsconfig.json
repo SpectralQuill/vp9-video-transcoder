@@ -1,11 +1,7 @@
 {
     "compilerOptions": {
         "target": "ESNext",
-        "lib": [
-            "dom",
-            "dom.iterable",
-            "esnext"
-        ],
+        "lib": ["dom", "dom.iterable", "esnext"],
         "allowJs": true,
         "skipLibCheck": true,
         "esModuleInterop": true,
@@ -19,8 +15,6 @@
         "isolatedModules": true,
         "noEmit": true
     },
-    "include": [
-        "prototype/scripts", "prototype/src"
-    ],
+    "include": ["scripts", "src"],
     "exclude": ["node_modules"]
 }
