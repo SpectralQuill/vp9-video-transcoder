@@ -12,8 +12,10 @@
         "tauri": "tauri"
     },
     "dependencies": {
+        "@tauri-apps/api": "^2.10.1",
         "react": "^19.2.0",
-        "react-dom": "^19.2.0"
+        "react-dom": "^19.2.0",
+        "sass": "^1.97.3"
     },
     "devDependencies": {
         "@eslint/js": "^9.39.1",

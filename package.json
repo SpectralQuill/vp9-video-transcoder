@@ -15,7 +15,9 @@
     "type": "commonjs",
     "main": "index.ts",
     "scripts": {
-        "dev": "cd app && npm run tauri dev",
+        "app:clean": "cd app/src-tauri && cargo clean",
+        "app:dev": "cd app && npm run tauri dev",
+        "init": "npm i && cd app & npm i",
         "prettier": "prettier --write '**/*.{ts,tsx,json}' --tab-width 4"
     },
     "devDependencies": {

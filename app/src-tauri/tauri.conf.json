@@ -13,10 +13,10 @@
         "windows": [
             {
                 "title": "VP9 Video Transcoder",
-                "width": 800,
-                "height": 600,
-                "resizable": true,
-                "fullscreen": false
+                "width": 1024,
+                "height": 768,
+                "decorations": false,
+                "maximized": true
             }
         ],
         "security": {
