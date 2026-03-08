@@ -1,0 +1,16 @@
+@use "variables" as *;
+
+body {
+    margin: 0;
+}
+
+[data-tauri-drag-region] {
+    cursor: grab;
+    user-select: none; 
+}
+
+button {
+    outline: 0;
+    border: 0;
+    background: none;
+}
