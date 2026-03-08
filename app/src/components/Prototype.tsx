@@ -1,41 +1,61 @@
-import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useState } from "react";
+import { AppContext } from "../contexts/AppContext";
+import {
+    Channel,
+    invoke
+} from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-
-interface ProgressEvent {
-    file: string;
-    percent: number;
-};
-
-const VIDEOS_PATH = "C:/Videos";
+import {
+    useContext,
+    useEffect,
+    useState
+} from "react";
 
 export function Prototype() {
+    const { envMap: { VITE_PROTOTYPE_VIDEOS_PATH: videosPath } } = useContext(AppContext);
     const [videos, setVideos] = useState<string[]>([]);
-    const [progress, setProgress] = useState<ProgressEvent[]>([]);
+    const [progress, setProgress] = useState<string>("");
     
-    useEffect(() => {
-        const unlisten = listen<ProgressEvent>("transcode-progress", (event) => {
-            setProgress((prev) => [...prev, event.payload]);
-        });
+    // useEffect(() => {
+    //     const unlisten = listen<ProgressEvent>("transcode-progress", (event) => {
+    //         setProgress((prev) => [...prev, event.payload]);
+    //     });
         
-        return () => {
-            unlisten.then((fn) => fn());
-        };
+    //     return () => {
+    //         unlisten.then((fn) => fn());
+    //     };
+    // }, []);
+
+    useEffect(() => {
+        
+        
+        // const unlisten = listen("ffmpeg-log", (event) => {
+        //     const log = event.payload as string;
+        //     setProgress(log);
+        // });
+
+        // return () => {
+        //     unlisten.then(f => f());
+        // };
     }, []);
     
     const loadVideos = async () => {
         const files = await invoke<string[]>("get_video_list", {
-            folder: VIDEOS_PATH
+            folder: videosPath
         });
         setVideos(files);
     };
     
     const startBatch = async () => {
         const jobs = videos.map((v) => [v, v.replace(/\.\w+$/, "_vp9.mp4")]);
-        await invoke("transcode_vp9_batch", { jobs });
+        const onEvent = new Channel<TranscodeEvent>(payload => {
+            if (!payload) return;
+            setProgress(payload.time);
+        });
+        await invoke("transcode_vp9_batch", { jobs, onEvent });
     };
     
     return <>
+        <h1>{videosPath}</h1>
         <div>
             <button onClick={loadVideos}>Load Videos</button>
             <button onClick={startBatch}>Transcode Batch</button>
@@ -45,11 +65,12 @@ export function Prototype() {
             }</ul>
             <h1>In Progress</h1>
             <ul>{
-                progress.map((p, i) => (
-                    <li key={i}>
-                        {p.file}: {p.percent}%
-                    </li>
-                ))
+                progress
+                // progress.map((p, i) => (
+                //     <li key={i}>
+                //         {p.file}: {p.percent}%
+                //     </li>
+                // ))
             }</ul>
         </div>
     </>;

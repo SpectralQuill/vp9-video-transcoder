@@ -5,18 +5,19 @@
 
 use std::{
     fs,
+    io::{BufRead, BufReader},
     path::PathBuf,
-    process::Command,
-    thread,
+    thread
 };
-
+use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use serde::Serialize;
-use tauri::Emitter;
+use strip_ansi_escapes::strip;
+use tauri::ipc::Channel;
 
-#[derive(Serialize, Clone)]
-struct ProgressEvent {
-    file: String,
-    percent: u8,
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TranscodeEvent {
+    time: String
 }
 
 #[tauri::command]
@@ -43,91 +44,111 @@ async fn get_video_list(folder: String) -> Result<Vec<String>, String> {
     Ok(videos)
 }
 
+fn run_ffmpeg_stream(
+    input: String,
+    output: String,
+    on_event: &Channel<TranscodeEvent>,
+    _app: tauri::AppHandle
+) -> Result<(), String> {
+
+    let input_path = PathBuf::from(input);
+    let output_path = PathBuf::from(output);
+
+    let pty_system = native_pty_system();
+    let pair = pty_system.openpty(PtySize { rows: 24, cols: 80, pixel_width: 0, pixel_height: 0 }).map_err(|e| e.to_string())?;
+
+    let mut cmd1 = CommandBuilder::new("ffmpeg");
+    cmd1.args(&[
+        "-i",
+        input_path.to_str().unwrap(),
+        "-vf","scale=-1:720",
+        "-c:v","libvpx-vp9",
+        "-b:v","0",
+        "-crf","30",
+        "-cpu-used","1",
+        "-row-mt","1",
+        "-tile-columns","1",
+        "-threads","8",
+        "-pass","1",
+        "-an",
+        "-f","mp4",
+        if cfg!(windows) { "NUL" } else { "/dev/null" }
+    ]);
+
+    let mut child1 = pair.slave.spawn_command(cmd1).map_err(|e| e.to_string())?;
+
+    let reader1 = BufReader::new(pair.master.try_clone_reader().map_err(|e| e.to_string())?);
+
+    for line in reader1.lines() {
+        if let Ok(text) = line {
+            println!("{}", text);
+            if text.contains("frame=") || text.contains("time=") {
+                let stripped = strip(text.as_bytes()).unwrap_or_else(|_| text.as_bytes().to_vec());
+                let cleaned = String::from_utf8(stripped).unwrap_or(text.clone());
+                on_event.send(TranscodeEvent {
+                    time: cleaned
+                }).unwrap();
+            }
+        }
+    }
+
+    child1.wait().map_err(|e| e.to_string())?;
+
+    let pair2 = pty_system.openpty(PtySize { rows: 24, cols: 80, pixel_width: 0, pixel_height: 0 }).map_err(|e| e.to_string())?;
+
+    let mut cmd2 = CommandBuilder::new("ffmpeg");
+    cmd2.args(&[
+        "-i",
+        input_path.to_str().unwrap(),
+        "-vf","scale=-1:720",
+        "-c:v","libvpx-vp9",
+        "-b:v","0",
+        "-crf","30",
+        "-cpu-used","1",
+        "-row-mt","1",
+        "-tile-columns","1",
+        "-threads","8",
+        "-pass","2",
+        "-c:a","aac",
+        "-b:a","128k",
+        output_path.to_str().unwrap()
+    ]);
+
+    let mut child2 = pair2.slave.spawn_command(cmd2).map_err(|e| e.to_string())?;
+
+    let reader2 = BufReader::new(pair2.master.try_clone_reader().map_err(|e| e.to_string())?);
+
+    for line in reader2.lines() {
+        if let Ok(text) = line {
+            println!("{}", text);
+            if text.contains("frame=") || text.contains("time=") {
+                let stripped = strip(text.as_bytes()).unwrap_or_else(|_| text.as_bytes().to_vec());
+                let cleaned = String::from_utf8(stripped).unwrap_or(text.clone());
+                on_event.send(TranscodeEvent {
+                    time: cleaned
+                }).unwrap();
+            }
+        }
+    }
+
+    child2.wait().map_err(|e| e.to_string())?;
+
+
+    Ok(())
+}
+
 #[tauri::command]
 fn transcode_vp9(
     input: String,
     output: String,
-    app_handle: tauri::AppHandle,
+    on_event: Channel<TranscodeEvent>,
+    app: tauri::AppHandle,
 ) -> Result<(), String> {
-    let input_path = PathBuf::from(input);
-    let output_path = PathBuf::from(output);
 
     thread::spawn(move || {
-        let status = Command::new("ffmpeg")
-            .args(&[
-                "-i",
-                input_path.to_str().unwrap(),
-                "-vf",
-                "scale=-1:720",
-                "-c:v",
-                "libvpx-vp9",
-                "-b:v",
-                "0",
-                "-crf",
-                "30",
-                "-cpu-used",
-                "1",
-                "-row-mt",
-                "1",
-                "-tile-columns",
-                "1",
-                "-threads",
-                "8",
-                "-pass",
-                "1",
-                "-an",
-                "-f",
-                "mp4",
-                if cfg!(windows) { "NUL" } else { "/dev/null" },
-            ])
-            .status()
-            .expect("Failed to run ffmpeg pass1");
 
-        if !status.success() {
-            println!("Pass 1 failed");
-            return;
-        }
+        let _ = run_ffmpeg_stream(input, output, &on_event, app.clone());
 
-        let status2 = Command::new("ffmpeg")
-            .args(&[
-                "-i",
-                input_path.to_str().unwrap(),
-                "-vf",
-                "scale=-1:720",
-                "-c:v",
-                "libvpx-vp9",
-                "-b:v",
-                "0",
-                "-crf",
-                "30",
-                "-cpu-used",
-                "1",
-                "-row-mt",
-                "1",
-                "-tile-columns",
-                "1",
-                "-threads",
-                "8",
-                "-pass",
-                "2",
-                "-c:a",
-                "aac",
-                "-b:a",
-                "128k",
-                output_path.to_str().unwrap(),
-            ])
-            .status()
-            .expect("Failed to run ffmpeg pass2");
-
-        if status2.success() {
-            let _ = app_handle.emit(
-                "transcode-progress",
-                ProgressEvent {
-                    file: output_path.to_string_lossy().to_string(),
-                    percent: 100,
-                },
-            );
-        }
     });
 
     Ok(())
@@ -136,83 +157,16 @@ fn transcode_vp9(
 #[tauri::command]
 fn transcode_vp9_batch(
     jobs: Vec<(String, String)>,
-    app_handle: tauri::AppHandle,
+    on_event: Channel<TranscodeEvent>,
+    app: tauri::AppHandle,
 ) -> Result<(), String> {
+
     thread::spawn(move || {
-        let total = jobs.len();
-        for (idx, (input, output)) in jobs.into_iter().enumerate() {
-            println!("Encoding {} of {}: {}", idx + 1, total, input);
 
-            let _ = Command::new("ffmpeg")
-                .args(&[
-                    "-i",
-                    &input,
-                    "-vf",
-                    "scale=-1:720",
-                    "-c:v",
-                    "libvpx-vp9",
-                    "-b:v",
-                    "0",
-                    "-crf",
-                    "30",
-                    "-cpu-used",
-                    "1",
-                    "-row-mt",
-                    "1",
-                    "-tile-columns",
-                    "1",
-                    "-threads",
-                    "8",
-                    "-pass",
-                    "1",
-                    "-an",
-                    "-f",
-                    "mp4",
-                    if cfg!(windows) { "NUL" } else { "/dev/null" },
-                ])
-                .status()
-                .expect("ffmpeg pass1 failed");
-
-            let _ = Command::new("ffmpeg")
-                .args(&[
-                    "-i",
-                    &input,
-                    "-vf",
-                    "scale=-1:720",
-                    "-c:v",
-                    "libvpx-vp9",
-                    "-b:v",
-                    "0",
-                    "-crf",
-                    "30",
-                    "-cpu-used",
-                    "1",
-                    "-row-mt",
-                    "1",
-                    "-tile-columns",
-                    "1",
-                    "-threads",
-                    "8",
-                    "-pass",
-                    "2",
-                    "-c:a",
-                    "aac",
-                    "-b:a",
-                    "128k",
-                    &output,
-                ])
-                .status()
-                .expect("ffmpeg pass2 failed");
-
-            let percent = ((idx + 1) * 100 / total) as u8;
-            let _ = app_handle.emit(
-                "transcode-progress",
-                ProgressEvent {
-                    file: output.clone(),
-                    percent,
-                },
-            );
+        for (input, output) in jobs {
+            let _ = run_ffmpeg_stream(input, output, &on_event, app.clone());
         }
+
     });
 
     Ok(())

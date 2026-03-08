@@ -1,0 +1,3 @@
+interface TranscodeEvent {
+    time: string;
+}
